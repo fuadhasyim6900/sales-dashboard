@@ -42,7 +42,7 @@ DEFAULT_TARGET_FILE = os.path.join(DATA_DIR, "DATA_TARGET_FUAD.xlsx")
 # =============================================================================
 st.set_page_config(
     page_title="Sales Intelligence Dashboard",
-    page_icon="🗂️",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -472,8 +472,8 @@ def growth_pct(series):
 # =============================================================================
 # SIDEBAR — SUMBER DATA & FILTER
 # =============================================================================
-st.sidebar.markdown("## 📜 Sales Intelligence")
-st.sidebar.caption("Dashboard Distributor Bahan Bangunan")
+st.sidebar.markdown("## 📊 Sales Intelligence")
+st.sidebar.caption("Dashboard Distributor Bahan Bangunan / Cat")
 st.sidebar.markdown("---")
 
 st.sidebar.markdown("### 📁 Sumber Data")
@@ -1875,38 +1875,43 @@ elif page.startswith("9️⃣"):
         supp_count = (
             df.groupby("KD GRUP")["SUPP"].nunique().reset_index(name="JUMLAH_SUPPLIER")
         )
-        single = supp_count[supp_count["JUMLAH_SUPPLIER"] == 1]
-        multi = supp_count[supp_count["JUMLAH_SUPPLIER"] > 1]
-        c1, c2 = st.columns(2)
-        c1.metric("Customer hanya 1 Supplier (target cross-sell)", fmt_num(len(single)))
-        c2.metric("Customer dengan multi-Supplier", fmt_num(len(multi)))
-        fig = px.histogram(
-            supp_count,
-            x="JUMLAH_SUPPLIER",
-            nbins=supp_count["JUMLAH_SUPPLIER"].max(),
-            title="Distribusi Jumlah Supplier per Customer",
-            color_discrete_sequence=[COLOR_ACCENT],
-        )
-        fig.update_traces(
-            hovertemplate="Jumlah Supplier: %{x}<br>Jumlah Customer: %{y:,.0f}<extra></extra>"
-        )
-        fig.update_yaxes(tickformat=",.0f")
-        fig.update_layout(height=380, plot_bgcolor="white")
-        st.plotly_chart(fig, use_container_width=True)
-        pct_single = len(single) / len(supp_count) * 100 if len(supp_count) else 0
-        insight(
-            f"**{len(single)} customer ({pct_single:.1f}%)** hanya membeli dari 1 supplier — "
-            f"berpotensi menjadi target utama program **cross-selling** ke supplier/merek lain.",
-            "warn",
-        )
-        top_single = single.merge(
-            df.groupby("KD GRUP")["NOMINAL"].sum().reset_index(), on="KD GRUP"  # type: ignore[reportAttributeAccessIssue]
-        )
-        top_single = top_single.sort_values("NOMINAL", ascending=False).head(15)
-        st.markdown(
-            "**Top Customer Single-Supplier (prioritas cross-sell, diurutkan omset)**"
-        )
-        st.dataframe(style_df(top_single), use_container_width=True, hide_index=True)
+        if supp_count.empty:
+            st.caption("Tidak ada data customer/supplier untuk dianalisis pada filter saat ini.")
+        else:
+            single = supp_count[supp_count["JUMLAH_SUPPLIER"] == 1]
+            multi = supp_count[supp_count["JUMLAH_SUPPLIER"] > 1]
+            c1, c2 = st.columns(2)
+            c1.metric("Customer hanya 1 Supplier (target cross-sell)", fmt_num(len(single)))
+            c2.metric("Customer dengan multi-Supplier", fmt_num(len(multi)))
+            max_supplier = supp_count["JUMLAH_SUPPLIER"].max()
+            nbins = int(max_supplier) if pd.notna(max_supplier) and max_supplier > 0 else 1
+            fig = px.histogram(
+                supp_count,
+                x="JUMLAH_SUPPLIER",
+                nbins=nbins,
+                title="Distribusi Jumlah Supplier per Customer",
+                color_discrete_sequence=[COLOR_ACCENT],
+            )
+            fig.update_traces(
+                hovertemplate="Jumlah Supplier: %{x}<br>Jumlah Customer: %{y:,.0f}<extra></extra>"
+            )
+            fig.update_yaxes(tickformat=",.0f")
+            fig.update_layout(height=380, plot_bgcolor="white")
+            st.plotly_chart(fig, use_container_width=True)
+            pct_single = len(single) / len(supp_count) * 100 if len(supp_count) else 0
+            insight(
+                f"**{len(single)} customer ({pct_single:.1f}%)** hanya membeli dari 1 supplier — "
+                f"berpotensi menjadi target utama program **cross-selling** ke supplier/merek lain.",
+                "warn",
+            )
+            top_single = single.merge(
+                df.groupby("KD GRUP")["NOMINAL"].sum().reset_index(), on="KD GRUP"  # type: ignore[reportAttributeAccessIssue]
+            )
+            top_single = top_single.sort_values("NOMINAL", ascending=False).head(15)
+            st.markdown(
+                "**Top Customer Single-Supplier (prioritas cross-sell, diurutkan omset)**"
+            )
+            st.dataframe(style_df(top_single), use_container_width=True, hide_index=True)
 
 # =============================================================================
 # 10. KPI EFISIENSI
