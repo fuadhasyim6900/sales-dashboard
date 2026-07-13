@@ -1913,7 +1913,7 @@ elif page.startswith("9️⃣"):
         fig = px.histogram(
             supp_count,
             x="JUMLAH_SUPPLIER",
-            nbins=supp_count["JUMLAH_SUPPLIER"].max(),
+            nbins=int(supp_count["JUMLAH_SUPPLIER"].max()),
             title="Distribusi Jumlah Supplier per Customer",
             color_discrete_sequence=[COLOR_ACCENT],
         )
