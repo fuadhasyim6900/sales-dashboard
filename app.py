@@ -67,17 +67,25 @@ PALETTE = [
 
 CUSTOM_CSS = f"""
 <style>
-    .main {{ background-color: #F4F6F7; }}
+    /* ====== Paksa palet terang, agar tidak bentrok dengan dark mode OS/browser ====== */
+    html, body, [class*="css"] {{ color-scheme: light !important; }}
+    .stApp {{ background-color: #F4F6F7 !important; }}
+    .main {{ background-color: #F4F6F7 !important; }}
     .block-container {{ padding-top: 1.2rem; }}
+
+    /* Kotak metric (KPI) - background putih, teks gelap dipaksa agar selalu kontras */
     div[data-testid="stMetric"] {{
-        background-color: #FFFFFF;
+        background-color: #FFFFFF !important;
         border: 1px solid #E5E8E8;
         border-left: 5px solid {COLOR_PRIMARY};
         border-radius: 10px;
         padding: 14px 16px 8px 16px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }}
-    div[data-testid="stMetricLabel"] {{ font-weight: 600; color: #34495E; }}
+    div[data-testid="stMetricLabel"] * {{ font-weight: 600 !important; color: #34495E !important; }}
+    div[data-testid="stMetricValue"] * {{ color: {COLOR_PRIMARY} !important; font-weight: 700 !important; }}
+    div[data-testid="stMetricDelta"] * {{ color: #566573 !important; }}
+
     .insight-box {{
         background-color: #EAF2F8;
         border-left: 5px solid {COLOR_ACCENT};
@@ -85,15 +93,37 @@ CUSTOM_CSS = f"""
         border-radius: 8px;
         margin-bottom: 8px;
         font-size: 0.95rem;
+        color: #1B2631 !important;
     }}
     .insight-good {{ border-left-color: {COLOR_GOOD}; background-color: #E9F7EF; }}
     .insight-warn {{ border-left-color: {COLOR_WARN}; background-color: #FEF9E7; }}
     .insight-bad {{ border-left-color: {COLOR_BAD}; background-color: #FDEDEC; }}
     .page-title {{
-        color: {COLOR_PRIMARY}; font-weight: 800; margin-bottom: 0px;
+        color: {COLOR_PRIMARY} !important; font-weight: 800; margin-bottom: 0px;
     }}
-    .page-subtitle {{ color: #566573; margin-top: 0px; margin-bottom: 1rem; }}
-    section[data-testid="stSidebar"] {{ background-color: #FFFFFF; }}
+    .page-subtitle {{ color: #566573 !important; margin-top: 0px; margin-bottom: 1rem; }}
+
+    /* Sidebar dipaksa putih dengan teks gelap */
+    section[data-testid="stSidebar"] {{ background-color: #FFFFFF !important; }}
+    section[data-testid="stSidebar"] * {{ color: #2C3E50 !important; }}
+    section[data-testid="stSidebar"] .stRadio label, 
+    section[data-testid="stSidebar"] .stMultiSelect label {{ color: #2C3E50 !important; }}
+
+    /* Judul/teks umum halaman utama dipaksa gelap agar tidak pudar */
+    .stMarkdown, .stMarkdown p, .stMarkdown li {{ color: #1B2631; }}
+
+    /* ====== Penyesuaian tampilan HP / layar sempit ====== */
+    @media (max-width: 640px) {{
+        .block-container {{ padding-left: 0.8rem !important; padding-right: 0.8rem !important; padding-top: 0.8rem !important; }}
+        .page-title {{ font-size: 1.4rem !important; }}
+        .page-subtitle {{ font-size: 0.85rem !important; }}
+        div[data-testid="stMetric"] {{ padding: 10px 10px 6px 10px !important; margin-bottom: 8px; }}
+        div[data-testid="stMetricValue"] * {{ font-size: 1.1rem !important; }}
+        div[data-testid="stMetricLabel"] * {{ font-size: 0.75rem !important; }}
+        .insight-box {{ font-size: 0.85rem !important; padding: 10px 12px !important; }}
+        /* Grafik plotly: kurangi tinggi default supaya tidak terlalu memanjang di HP */
+        .js-plotly-plot {{ max-width: 100% !important; }}
+    }}
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
