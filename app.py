@@ -5,37 +5,17 @@ Distributor Bahan Bangunan / Cat
 Dibuat sebagai alat bantu manajemen untuk meningkatkan omset, AO, customer aktif,
 dan mengidentifikasi peluang penjualan berbasis data.
 
-VERSI REPO/DEPLOY:
-    Data dibaca otomatis dari folder ./data di repository ini:
-        - data/Data_Omset_Power_Query_tahun_2026.xlsx  (data transaksi)
-        - data/DATA_TARGET_FUAD.xlsx                    (data target, opsional)
-    Nama file bisa diganti lewat environment variable / edit konstanta di bawah,
-    dan pengguna tetap bisa override dengan upload manual dari sidebar jika perlu.
-
-Cara menjalankan lokal:
-    pip install -r requirements.txt
+Cara menjalankan:
+    pip install streamlit pandas plotly openpyxl
     streamlit run app.py
-
-Cara deploy ke Streamlit Community Cloud:
-    1. Push folder ini (app.py, requirements.txt, data/) ke repo GitHub.
-    2. Buka https://share.streamlit.io -> New app -> pilih repo & branch -> main file: app.py
-    3. Deploy. Selesai.
 """
 
-import os
 import re
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-
-# =============================================================================
-# KONFIGURASI FILE DATA BAWAAN (DI DALAM REPO)
-# =============================================================================
-DATA_DIR = "data"
-DEFAULT_TRANSAKSI_FILE = os.path.join(DATA_DIR, "Data_Omset_Power_Query_tahun_2026.xlsx")
-DEFAULT_TARGET_FILE = os.path.join(DATA_DIR, "DATA_TARGET_FUAD.xlsx")
 
 # =============================================================================
 # KONFIGURASI HALAMAN & STYLE
@@ -183,9 +163,7 @@ def style_df(df_in, decimals=0, pct_cols=None):
 
 @st.cache_data(show_spinner=False)
 def load_data(file):
-    """`file` bisa berupa path string (data bawaan repo) atau file upload Streamlit."""
-    name = file.name if hasattr(file, "name") else str(file)
-    if name.lower().endswith(".csv"):
+    if file.name.lower().endswith(".csv"):
         df = pd.read_csv(file)
     else:
         df = pd.read_excel(file)
@@ -470,68 +448,20 @@ def growth_pct(series):
 
 
 # =============================================================================
-# SIDEBAR — SUMBER DATA & FILTER
+# SIDEBAR — UPLOAD & FILTER
 # =============================================================================
 st.sidebar.markdown("## 📊 Sales Intelligence")
 st.sidebar.caption("Dashboard Distributor Bahan Bangunan / Cat")
-
-col_refresh, col_info = st.sidebar.columns([1, 1])
-with col_refresh:
-    if st.button("🔄 Refresh Data", use_container_width=True,
-                  help="Bersihkan cache dan baca ulang data (pakai ini setelah file data diganti/diupdate)"):
-        st.cache_data.clear()
-        st.rerun()
-with col_info:
-    if st.button("🧹 Clear Cache", use_container_width=True,
-                  help="Bersihkan seluruh cache aplikasi tanpa langsung reload halaman"):
-        st.cache_data.clear()
-        st.cache_resource.clear()
-        st.sidebar.success("Cache dibersihkan ✅")
-
 st.sidebar.markdown("---")
 
-st.sidebar.markdown("### 📁 Sumber Data")
-default_transaksi_ada = os.path.exists(DEFAULT_TRANSAKSI_FILE)
-default_target_ada = os.path.exists(DEFAULT_TARGET_FILE)
-
-sumber = st.sidebar.radio(
-    "Pilih sumber data",
-    ["Data bawaan repo (default)", "Upload manual"],
-    index=0 if default_transaksi_ada else 1,
-    help=(
-        "Data bawaan repo dibaca otomatis dari folder data/ di repository ini. "
-        "Pilih 'Upload manual' untuk mencoba file lain tanpa mengubah repo."
-    ),
+uploaded = st.sidebar.file_uploader(
+    "📁 Upload Data Transaksi", type=["csv", "xlsx", "xls"]
+)
+uploaded_target = st.sidebar.file_uploader(
+    "🎯 Upload Data Target (opsional)", type=["xlsx", "xls"]
 )
 
-uploaded = None
-uploaded_target = None
-
-if sumber == "Upload manual":
-    uploaded = st.sidebar.file_uploader(
-        "📁 Upload Data Transaksi", type=["csv", "xlsx", "xls"]
-    )
-    uploaded_target = st.sidebar.file_uploader(
-        "🎯 Upload Data Target (opsional)", type=["xlsx", "xls"]
-    )
-    data_source = uploaded
-    target_source = uploaded_target
-else:
-    if not default_transaksi_ada:
-        st.sidebar.error(
-            f"File data bawaan tidak ditemukan di `{DEFAULT_TRANSAKSI_FILE}`. "
-            "Pastikan file sudah ada di folder data/ pada repo, atau pilih 'Upload manual'."
-        )
-    data_source = DEFAULT_TRANSAKSI_FILE if default_transaksi_ada else None
-    target_source = DEFAULT_TARGET_FILE if default_target_ada else None
-    if default_transaksi_ada:
-        st.sidebar.success(f"✅ Memakai: `{DEFAULT_TRANSAKSI_FILE}`")
-    if default_target_ada:
-        st.sidebar.success(f"✅ Memakai: `{DEFAULT_TARGET_FILE}`")
-    else:
-        st.sidebar.caption("ℹ️ Data target opsional tidak ditemukan di repo.")
-
-if data_source is None:
+if uploaded is None:
     st.markdown(
         '<h1 class="page-title">📊 Sales Intelligence Dashboard</h1>',
         unsafe_allow_html=True,
@@ -542,8 +472,7 @@ if data_source is None:
         unsafe_allow_html=True,
     )
     st.info(
-        "⬅️ Silakan upload file data transaksi (CSV / Excel) melalui sidebar, "
-        "atau letakkan file di folder `data/` pada repository untuk pemuatan otomatis."
+        "⬅️ Silakan upload file data transaksi (CSV / Excel) melalui sidebar untuk memulai."
     )
     with st.expander("📋 Struktur Kolom yang Diharapkan", expanded=True):
         st.dataframe(
@@ -574,7 +503,7 @@ if data_source is None:
         )
     st.stop()
 
-df_raw = load_data(data_source)
+df_raw = load_data(uploaded)
 missing = [c for c in REQUIRED_COLS if c not in df_raw.columns]
 if missing:
     st.warning(
@@ -622,8 +551,8 @@ if df.empty:
 
 # Data target (opsional) — ikut disaring oleh filter Depo di sidebar agar konsisten
 target_df = None
-if target_source is not None:
-    target_df = load_target_data(target_source)
+if uploaded_target is not None:
+    target_df = load_target_data(uploaded_target)
     if f_depo and "DEPO" in target_df.columns:
         target_df = target_df[target_df["DEPO"].isin(f_depo)]
 
@@ -690,7 +619,7 @@ if page.startswith("1️⃣"):
     st.markdown("### 🎯 Target vs Realisasi (Bulan Berjalan)")
     if target_df is None:
         st.caption(
-            "📌 Upload **Data Target** di sidebar (atau letakkan di data/) untuk menampilkan perbandingan target vs realisasi."
+            "📌 Upload **Data Target** di sidebar untuk menampilkan perbandingan target vs realisasi."
         )
     elif not has(df, "TGL FKTR") or not df["TGL FKTR"].notna().any():
         st.caption(
@@ -922,7 +851,7 @@ elif page.startswith("2️⃣"):
         st.markdown("### 🎯 Target vs Realisasi per Salesman (Bulan Berjalan)")
         if target_df is None:
             st.caption(
-                "📌 Upload **Data Target** di sidebar (atau letakkan di data/) untuk menampilkan perbandingan target vs realisasi per salesman."
+                "📌 Upload **Data Target** di sidebar untuk menampilkan perbandingan target vs realisasi per salesman."
             )
         elif not has(df, "TGL FKTR") or not df["TGL FKTR"].notna().any():
             st.caption(
@@ -941,8 +870,18 @@ elif page.startswith("2️⃣"):
             bulan_num_sm = max_date_sm.month
             bulan_col_sm = MONTH_COLS[bulan_num_sm - 1]
             bulan_nama_sm = [
-                "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-                "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+                "Januari",
+                "Februari",
+                "Maret",
+                "April",
+                "Mei",
+                "Juni",
+                "Juli",
+                "Agustus",
+                "September",
+                "Oktober",
+                "November",
+                "Desember",
             ][bulan_num_sm - 1]
 
             st.caption(
@@ -970,7 +909,9 @@ elif page.startswith("2️⃣"):
                     target_sales_df.groupby("NAMA SALESMAN")[bulan_col_sm]
                     .sum()  # type: ignore[reportAttributeAccessIssue]
                     .reset_index()
-                    .rename(columns={"NAMA SALESMAN": "SALESMAN", bulan_col_sm: "TARGET"})
+                    .rename(
+                        columns={"NAMA SALESMAN": "SALESMAN", bulan_col_sm: "TARGET"}
+                    )
                 )
                 tvr_sm = target_by_sales.merge(
                     realisasi_by_sales, on="SALESMAN", how="outer"
@@ -1002,9 +943,11 @@ elif page.startswith("2️⃣"):
                         ("💰 Total Realisasi", fmt_rp(total_realisasi_sm), None),
                         (
                             "📊 Pencapaian",
-                            f"{total_achv_sm:,.1f}%"
-                            if not pd.isna(total_achv_sm)
-                            else "-",
+                            (
+                                f"{total_achv_sm:,.1f}%"
+                                if not pd.isna(total_achv_sm)
+                                else "-"
+                            ),
                             None,
                         ),
                     ]
@@ -1059,9 +1002,7 @@ elif page.startswith("2️⃣"):
                     columns={"SALESMAN": "Salesman", "ACHV_%": "Pencapaian (%)"}
                 )
                 st.dataframe(
-                    style_df(
-                        tvr_sm_display, decimals=0, pct_cols=["Pencapaian (%)"]
-                    ),
+                    style_df(tvr_sm_display, decimals=0, pct_cols=["Pencapaian (%)"]),
                     use_container_width=True,
                     hide_index=True,
                 )
@@ -1889,43 +1830,38 @@ elif page.startswith("9️⃣"):
         supp_count = (
             df.groupby("KD GRUP")["SUPP"].nunique().reset_index(name="JUMLAH_SUPPLIER")
         )
-        if supp_count.empty:
-            st.caption("Tidak ada data customer/supplier untuk dianalisis pada filter saat ini.")
-        else:
-            single = supp_count[supp_count["JUMLAH_SUPPLIER"] == 1]
-            multi = supp_count[supp_count["JUMLAH_SUPPLIER"] > 1]
-            c1, c2 = st.columns(2)
-            c1.metric("Customer hanya 1 Supplier (target cross-sell)", fmt_num(len(single)))
-            c2.metric("Customer dengan multi-Supplier", fmt_num(len(multi)))
-            max_supplier = supp_count["JUMLAH_SUPPLIER"].max()
-            nbins = int(max_supplier) if pd.notna(max_supplier) and max_supplier > 0 else 1
-            fig = px.histogram(
-                supp_count,
-                x="JUMLAH_SUPPLIER",
-                nbins=nbins,
-                title="Distribusi Jumlah Supplier per Customer",
-                color_discrete_sequence=[COLOR_ACCENT],
-            )
-            fig.update_traces(
-                hovertemplate="Jumlah Supplier: %{x}<br>Jumlah Customer: %{y:,.0f}<extra></extra>"
-            )
-            fig.update_yaxes(tickformat=",.0f")
-            fig.update_layout(height=380, plot_bgcolor="white")
-            st.plotly_chart(fig, use_container_width=True)
-            pct_single = len(single) / len(supp_count) * 100 if len(supp_count) else 0
-            insight(
-                f"**{len(single)} customer ({pct_single:.1f}%)** hanya membeli dari 1 supplier — "
-                f"berpotensi menjadi target utama program **cross-selling** ke supplier/merek lain.",
-                "warn",
-            )
-            top_single = single.merge(
-                df.groupby("KD GRUP")["NOMINAL"].sum().reset_index(), on="KD GRUP"  # type: ignore[reportAttributeAccessIssue]
-            )
-            top_single = top_single.sort_values("NOMINAL", ascending=False).head(15)
-            st.markdown(
-                "**Top Customer Single-Supplier (prioritas cross-sell, diurutkan omset)**"
-            )
-            st.dataframe(style_df(top_single), use_container_width=True, hide_index=True)
+        single = supp_count[supp_count["JUMLAH_SUPPLIER"] == 1]
+        multi = supp_count[supp_count["JUMLAH_SUPPLIER"] > 1]
+        c1, c2 = st.columns(2)
+        c1.metric("Customer hanya 1 Supplier (target cross-sell)", fmt_num(len(single)))
+        c2.metric("Customer dengan multi-Supplier", fmt_num(len(multi)))
+        fig = px.histogram(
+            supp_count,
+            x="JUMLAH_SUPPLIER",
+            nbins=supp_count["JUMLAH_SUPPLIER"].max(),
+            title="Distribusi Jumlah Supplier per Customer",
+            color_discrete_sequence=[COLOR_ACCENT],
+        )
+        fig.update_traces(
+            hovertemplate="Jumlah Supplier: %{x}<br>Jumlah Customer: %{y:,.0f}<extra></extra>"
+        )
+        fig.update_yaxes(tickformat=",.0f")
+        fig.update_layout(height=380, plot_bgcolor="white")
+        st.plotly_chart(fig, use_container_width=True)
+        pct_single = len(single) / len(supp_count) * 100 if len(supp_count) else 0
+        insight(
+            f"**{len(single)} customer ({pct_single:.1f}%)** hanya membeli dari 1 supplier — "
+            f"berpotensi menjadi target utama program **cross-selling** ke supplier/merek lain.",
+            "warn",
+        )
+        top_single = single.merge(
+            df.groupby("KD GRUP")["NOMINAL"].sum().reset_index(), on="KD GRUP"  # type: ignore[reportAttributeAccessIssue]
+        )
+        top_single = top_single.sort_values("NOMINAL", ascending=False).head(15)
+        st.markdown(
+            "**Top Customer Single-Supplier (prioritas cross-sell, diurutkan omset)**"
+        )
+        st.dataframe(style_df(top_single), use_container_width=True, hide_index=True)
 
 # =============================================================================
 # 10. KPI EFISIENSI
