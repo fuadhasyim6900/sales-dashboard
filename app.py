@@ -42,7 +42,7 @@ DEFAULT_TARGET_FILE = os.path.join(DATA_DIR, "DATA_TARGET_FUAD.xlsx")
 # =============================================================================
 st.set_page_config(
     page_title="Sales Intelligence Dashboard",
-    page_icon="📊",
+    page_icon="🗂️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -472,8 +472,8 @@ def growth_pct(series):
 # =============================================================================
 # SIDEBAR — SUMBER DATA & FILTER
 # =============================================================================
-st.sidebar.markdown("## 📊 Sales Intelligence")
-st.sidebar.caption("Dashboard Distributor Bahan Bangunan / Cat")
+st.sidebar.markdown("## 📜 Sales Intelligence")
+st.sidebar.caption("Dashboard Distributor Bahan Bangunan")
 st.sidebar.markdown("---")
 
 st.sidebar.markdown("### 📁 Sumber Data")
