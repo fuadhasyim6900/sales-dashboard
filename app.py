@@ -474,6 +474,20 @@ def growth_pct(series):
 # =============================================================================
 st.sidebar.markdown("## 📊 Sales Intelligence")
 st.sidebar.caption("Dashboard Distributor Bahan Bangunan / Cat")
+
+col_refresh, col_info = st.sidebar.columns([1, 1])
+with col_refresh:
+    if st.button("🔄 Refresh Data", use_container_width=True,
+                  help="Bersihkan cache dan baca ulang data (pakai ini setelah file data diganti/diupdate)"):
+        st.cache_data.clear()
+        st.rerun()
+with col_info:
+    if st.button("🧹 Clear Cache", use_container_width=True,
+                  help="Bersihkan seluruh cache aplikasi tanpa langsung reload halaman"):
+        st.cache_data.clear()
+        st.cache_resource.clear()
+        st.sidebar.success("Cache dibersihkan ✅")
+
 st.sidebar.markdown("---")
 
 st.sidebar.markdown("### 📁 Sumber Data")
